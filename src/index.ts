@@ -1,17 +1,20 @@
-import httpProxy from 'http-proxy';
+// Node.js resources
 import https from 'https';
 import http from 'http';
 import fs from 'fs';
 import tls from 'tls';
+
+// External Libraries
+import httpProxy from 'http-proxy';
 import pem from 'pem';
 
-// SSL port
+// SSL port. Where to listen to HTTPS requests (not HTTP).
 const HTTPS_PORT = 443;
 
-// Web port
+// Web port. Where to listen for HTTP requests (not HTTPS).
 const HTTP_PORT = 80;
 
-// Redirect port
+// Redirect port. This is where your development port should live on.
 const TARGET_PORT = 3000;
 
 /** Given a `domain`, verifies if there is a certificate somewhere, and serve it */
@@ -39,7 +42,8 @@ function createSecureContextFromLocalCertificate (domain: string) {
 }
 
 /**
-* Creates a certificate to be served by the server.
+* Creates a self-signed certificate to be served by the server. It has an expiration
+* date of 7 days.
 */
 async function createSecureContextOnTheFly () {
 	const cert = await new Promise<pem.CertificateCreationResult>((resolve, reject) => {
@@ -55,13 +59,38 @@ async function createSecureContextOnTheFly () {
 	return ctx;
 }
 
+/** The proxy object. It will always redirect to a localhost server at the `TARGET_PORT` port */
 const proxy = httpProxy.createProxyServer({ target: `http://localhost:${TARGET_PORT}` });
+
+/**
+* Error handling: what to serve the user if the proxy fails to retrieve it's content
+*/
+proxy.on('error', (error, _, res) => {
+	// `console.error` for logging purposes
+	console.error('ERROR', error);
+
+	const code = ((error as unknown as { code: string }).code);
+	if (code === 'ECONNREFUSED') {
+		// Send a 404 page if the server was not found
+		const page = fs.readFileSync(require.resolve('../404.html'));
+		res.statusCode = 404;
+		res.setHeader('Content-Type', 'text/html');
+		res.end(page);
+	} else {
+		// Send a 500 page otherwise
+		const page = fs.readFileSync(require.resolve('../500.html'), 'utf8');
+		res.statusCode = 500;
+		res.setHeader('Content-Type', 'text/html');
+		// Sends the error message to the user
+		res.end(page.replace('{ErrorText}', error.toString()));
+	}
+});
 
 const httpsServer = https.createServer({
 	/**
-	* Function called whenever a SSL certificate is about to be used. It will
-	* Verify what domain is trying to be accessed, and will try to serve the correct
-	* certificate. If no certificates for that domain are found, does nothing.
+	* Function called whenever a SSL certificate is requested. It will Verify what
+	* domain is trying to be accessed, and will try to serve the correct certificate.
+	* If no certificates for that domain is found, create one on the fly
 	*/
 	SNICallback: async (domain, cb) => {
 		const localCtx = createSecureContextFromLocalCertificate(domain);
@@ -83,8 +112,8 @@ const httpsServer = https.createServer({
 );
 
 /**
-* If the client tries to access the server through HTTP, just redirect them to
-* the development server, without questioning.
+* If the client tries to access the server through HTTP (not HTTPS),
+* just redirect them to the development server, without interfering.
 */
 const httpServer = http.createServer((req, res) => {
 	proxy.web(req, res);
