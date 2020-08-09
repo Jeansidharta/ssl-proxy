@@ -3,6 +3,7 @@ import https from 'https';
 import http from 'http';
 import fs from 'fs';
 import tls from 'tls';
+import pem from 'pem';
 
 // SSL port
 const HTTPS_PORT = 443;
@@ -14,7 +15,7 @@ const HTTP_PORT = 80;
 const TARGET_PORT = 3000;
 
 /** Given a `domain`, verifies if there is a certificate somewhere, and serve it */
-function createSecureContext (domain: string) {
+function createSecureContextFromLocalCertificate (domain: string) {
 	let keyPath: string, certPath: string, caPath: string;
 	try {
 		keyPath = require.resolve(`../certificates/${domain}/private.key`);
@@ -37,6 +38,23 @@ function createSecureContext (domain: string) {
 	}
 }
 
+/**
+* Creates a certificate to be served by the server.
+*/
+async function createSecureContextOnTheFly () {
+	const cert = await new Promise<pem.CertificateCreationResult>((resolve, reject) => {
+		pem.createCertificate({ days: 7, selfSigned: true }, (err, keys) => {
+			if (err) reject(err);
+			resolve(keys);
+		});
+	});
+	const ctx = tls.createSecureContext({
+		cert: cert.certificate,
+		key: cert.clientKey,
+	});
+	return ctx;
+}
+
 const proxy = httpProxy.createProxyServer({ target: `http://localhost:${TARGET_PORT}` });
 
 const httpsServer = https.createServer({
@@ -45,10 +63,13 @@ const httpsServer = https.createServer({
 	* Verify what domain is trying to be accessed, and will try to serve the correct
 	* certificate. If no certificates for that domain are found, does nothing.
 	*/
-	SNICallback: (domain, cb) => {
-		const ctx = createSecureContext(domain);
-		if (ctx) {
-			cb(null, ctx);
+	SNICallback: async (domain, cb) => {
+		const localCtx = createSecureContextFromLocalCertificate(domain);
+		if (localCtx) {
+			cb(null, localCtx);
+		} else {
+			console.log('Generating certificate...');
+			cb(null, await createSecureContextOnTheFly());
 		}
 	}
 },
