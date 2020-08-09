@@ -1,0 +1,21 @@
+{
+  "name": "ssl-proxy",
+  "version": "1.0.0",
+  "description": "ssl-proxy",
+  "main": "out/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "ts-node-dev src/index.ts",
+    "build": "tsc",
+    "start": "node out/index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/http-proxy": "^1.17.4",
+    "@types/node": "^14.0.27",
+    "http-proxy": "^1.18.1",
+    "ts-node-dev": "^1.0.0-pre.56",
+    "typescript": "^3.9.7"
+  }
+}
