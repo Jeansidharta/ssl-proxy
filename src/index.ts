@@ -9,13 +9,13 @@ import httpProxy from 'http-proxy';
 import pem from 'pem';
 
 // SSL port. Where to listen to HTTPS requests (not HTTP).
-const HTTPS_PORT = 443;
+const HTTPS_PORT: string = process.env.SSLPROXY_HTTPS_LISTEN_PORT || '443';
 
 // Web port. Where to listen for HTTP requests (not HTTPS).
-const HTTP_PORT = 80;
+const HTTP_PORT: string = process.env.SSLPROXY_HTTP_LISTEN_PORT || '80';
 
 // Redirect port. This is where your development port should live on.
-const TARGET_PORT = 3000;
+const TARGET_PORT: string = process.env.SSLPROXY_TARGET_PORT || '3000';
 
 /** Given a `domain`, verifies if there is a certificate somewhere, and serve it */
 function createSecureContextFromLocalCertificate (domain: string) {
