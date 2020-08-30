@@ -16,12 +16,16 @@ type Options = {
 
 	/** Redirect port. This is where your development port should live on. */
 	TARGET_PORT: string,
+
+	/** Dictates wether the proxy will accept HTTP requests. */
+	ALLOW_INCOMING_HTTP: boolean,
 }
 
 const options: Options = {
 	HTTPS_PORT: process.env.SSLPROXY_HTTPS_LISTEN_PORT || '443',
 	HTTP_PORT: process.env.SSLPROXY_HTTP_LISTEN_PORT || '80',
 	TARGET_PORT: process.env.SSLPROXY_TARGET_PORT || '3000',
+	ALLOW_INCOMING_HTTP: process.env.ALLOW_INCOMING_HTTP === 'false' ? false : true,
 };
 
 /** Given a `domain`, verifies if there is a certificate somewhere, and serve it */
@@ -108,19 +112,21 @@ const httpsServer = https.createServer({
 	}
 );
 
-/**
-* If the client tries to access the server through HTTP (not HTTPS),
-* just redirect them to the development server, without interfering.
-*/
-const httpServer = http.createServer((req, res) => {
-	proxy.web(req, res);
-});
+if (options.ALLOW_INCOMING_HTTP) {
+	/**
+	* If the client tries to access the server through HTTP (not HTTPS),
+	* just redirect them to the development server, without interfering.
+	*/
+	const httpServer = http.createServer((req, res) => {
+		proxy.web(req, res);
+	});
+
+	httpServer.listen(options.HTTP_PORT, () => {
+		console.log(`HTTP Listening on port ${options.HTTP_PORT}, and redirecting to port ${options.TARGET_PORT}`);
+	});
+}
 
 console.log('Starting proxy...');
 httpsServer.listen(options.HTTPS_PORT, () => {
 	console.log(`HTTPS Listening on port ${options.HTTPS_PORT}, and redirecting to port ${options.TARGET_PORT}`);
-});
-
-httpServer.listen(options.HTTP_PORT, () => {
-	console.log(`HTTP Listening on port ${options.HTTP_PORT}, and redirecting to port ${options.TARGET_PORT}`);
 });
