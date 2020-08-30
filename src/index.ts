@@ -7,14 +7,22 @@ import tls from 'tls';
 // External Libraries
 import httpProxy from 'http-proxy';
 
-// SSL port. Where to listen to HTTPS requests (not HTTP).
-const HTTPS_PORT: string = process.env.SSLPROXY_HTTPS_LISTEN_PORT || '443';
+type Options = {
+	/** SSL port. Where to listen to HTTPS requests (not HTTP). */
+	HTTPS_PORT: string,
 
-// Web port. Where to listen for HTTP requests (not HTTPS).
-const HTTP_PORT: string = process.env.SSLPROXY_HTTP_LISTEN_PORT || '80';
+	/** Web port. Where to listen for HTTP requests (not HTTPS). */
+	HTTP_PORT: string,
 
-// Redirect port. This is where your development port should live on.
-const TARGET_PORT: string = process.env.SSLPROXY_TARGET_PORT || '3000';
+	/** Redirect port. This is where your development port should live on. */
+	TARGET_PORT: string,
+}
+
+const options: Options = {
+	HTTPS_PORT: process.env.SSLPROXY_HTTPS_LISTEN_PORT || '443',
+	HTTP_PORT: process.env.SSLPROXY_HTTP_LISTEN_PORT || '80',
+	TARGET_PORT: process.env.SSLPROXY_TARGET_PORT || '3000',
+};
 
 /** Given a `domain`, verifies if there is a certificate somewhere, and serve it */
 function createSecureContextFromLocalCertificate (domain: string) {
@@ -41,7 +49,7 @@ function createSecureContextFromLocalCertificate (domain: string) {
 }
 
 /** The proxy object. It will always redirect to a localhost server at the `TARGET_PORT` port */
-const proxy = httpProxy.createProxyServer({ target: `http://localhost:${TARGET_PORT}` });
+const proxy = httpProxy.createProxyServer({ target: `http://localhost:${options.TARGET_PORT}` });
 
 /**
 * Error handling: what to serve the user if the proxy fails to retrieve it's content
@@ -109,10 +117,10 @@ const httpServer = http.createServer((req, res) => {
 });
 
 console.log('Starting proxy...');
-httpsServer.listen(HTTPS_PORT, () => {
-	console.log(`HTTPS Listening on port ${HTTPS_PORT}, and redirecting to port ${TARGET_PORT}`);
+httpsServer.listen(options.HTTPS_PORT, () => {
+	console.log(`HTTPS Listening on port ${options.HTTPS_PORT}, and redirecting to port ${options.TARGET_PORT}`);
 });
 
-httpServer.listen(HTTP_PORT, () => {
-	console.log(`HTTP Listening on port ${HTTP_PORT}, and redirecting to port ${TARGET_PORT}`);
+httpServer.listen(options.HTTP_PORT, () => {
+	console.log(`HTTP Listening on port ${options.HTTP_PORT}, and redirecting to port ${options.TARGET_PORT}`);
 });
