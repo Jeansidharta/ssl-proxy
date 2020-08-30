@@ -67,16 +67,17 @@ const proxy = httpProxy.createProxyServer({ target: `http://localhost:${TARGET_P
 */
 proxy.on('error', (error, _, res) => {
 	// `console.error` for logging purposes
-	console.error('ERROR', error);
 
 	const code = ((error as unknown as { code: string }).code);
 	if (code === 'ECONNREFUSED') {
+		console.error('404 request');
 		// Send a 404 page if the server was not found
 		const page = fs.readFileSync(require.resolve('../404.html'));
 		res.statusCode = 404;
 		res.setHeader('Content-Type', 'text/html');
 		res.end(page);
 	} else {
+		console.error('ERROR', error);
 		// Send a 500 page otherwise
 		const page = fs.readFileSync(require.resolve('../500.html'), 'utf8');
 		res.statusCode = 500;
@@ -93,14 +94,21 @@ const httpsServer = https.createServer({
 	* If no certificates for that domain is found, create one on the fly
 	*/
 	SNICallback: async (domain, cb) => {
+		console.log(`Received request to domain ${domain}.`);
 		const localCtx = createSecureContextFromLocalCertificate(domain);
 		if (localCtx) {
+			console.log(`Serving pre-generated certificate...`);
 			cb(null, localCtx);
 		} else {
-			console.log('Generating certificate...');
+			console.log('Generating new certificate...');
 			cb(null, await createSecureContextOnTheFly());
 		}
-	}
+	},
+
+	/**
+	* TLS 1.3 encripts DNS requests, which is essential for the user's privacy
+	*/
+	minVersion: 'TLSv1.3',
 },
 	/**
 	* Function called whenever a request is made. Will simply proxy the request

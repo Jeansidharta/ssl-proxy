@@ -12,5 +12,6 @@ module.exports = {
 			"SSLPROXY_HTTP_LISTEN_PORT": 80,
 			"SSLPROXY_TARGET_PORT": 3000,
 		},
+		time: true,
 	}],
 };
