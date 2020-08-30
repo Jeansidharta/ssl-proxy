@@ -6,7 +6,6 @@ import tls from 'tls';
 
 // External Libraries
 import httpProxy from 'http-proxy';
-import pem from 'pem';
 
 // SSL port. Where to listen to HTTPS requests (not HTTP).
 const HTTPS_PORT: string = process.env.SSLPROXY_HTTPS_LISTEN_PORT || '443';
@@ -39,24 +38,6 @@ function createSecureContextFromLocalCertificate (domain: string) {
 		console.error(`Falied to create secure context for domain '${domain}'. Maybe the certs and keys are currupted?`);
 		return null;
 	}
-}
-
-/**
-* Creates a self-signed certificate to be served by the server. It has an expiration
-* date of 7 days.
-*/
-async function createSecureContextOnTheFly () {
-	const cert = await new Promise<pem.CertificateCreationResult>((resolve, reject) => {
-		pem.createCertificate({ days: 7, selfSigned: true }, (err, keys) => {
-			if (err) reject(err);
-			resolve(keys);
-		});
-	});
-	const ctx = tls.createSecureContext({
-		cert: cert.certificate,
-		key: cert.clientKey,
-	});
-	return ctx;
 }
 
 /** The proxy object. It will always redirect to a localhost server at the `TARGET_PORT` port */
@@ -100,8 +81,8 @@ const httpsServer = https.createServer({
 			console.log(`Serving pre-generated certificate...`);
 			cb(null, localCtx);
 		} else {
-			console.log('Generating new certificate...');
-			cb(null, await createSecureContextOnTheFly());
+			/** A falsy context is available for NodeJS. See the docs */
+			cb(new Error('Unrecognized name'), null as any);
 		}
 	},
 
