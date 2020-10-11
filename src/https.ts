@@ -50,7 +50,7 @@ const httpsServer = https.createServer({
 	/**
 	* TLS 1.3 encripts DNS requests, which is essential for the user's privacy
 	*/
-	minVersion: 'TLSv1.3',
+	// minVersion: 'TLSv1.3',
 },
 	/**
 	* Function called whenever a request is made. Will simply proxy the request
