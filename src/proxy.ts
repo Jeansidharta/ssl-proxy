@@ -17,18 +17,24 @@ proxy.on('error', (error, _, res) => {
 	if (code === 'ECONNREFUSED') {
 		console.error('404 request');
 		// Send a 404 page if the server was not found
-		const page = fs.readFileSync(require.resolve('../404.html'));
+		const page = fs.readFileSync(require.resolve('../error.html'), 'utf8');
 		res.statusCode = 404;
 		res.setHeader('Content-Type', 'text/html');
-		res.end(page);
+		res.end(page
+			.replace('{StatusCode}', '404')
+			.replace('{ErrorText}', 'The requested development server was not found')
+		);
 	} else {
 		console.error('ERROR', error);
 		// Send a 500 page otherwise
-		const page = fs.readFileSync(require.resolve('../500.html'), 'utf8');
+		const page = fs.readFileSync(require.resolve('../error.html'), 'utf8');
 		res.statusCode = 500;
 		res.setHeader('Content-Type', 'text/html');
 		// Sends the error message to the user
-		res.end(page.replace('{ErrorText}', error.toString()));
+		res.end(page
+			.replace('{StatusCode}', '500')
+			.replace('{ErrorText}', error.toString())
+		);
 	}
 });
 
