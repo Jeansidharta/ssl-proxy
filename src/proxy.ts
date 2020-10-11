@@ -1,6 +1,5 @@
-import fs from 'fs';
-
 import httpProxy from 'http-proxy';
+import { sendErrorPage } from './lib/send-error-page';
 
 import options from './options';
 
@@ -17,24 +16,11 @@ proxy.on('error', (error, _, res) => {
 	if (code === 'ECONNREFUSED') {
 		console.error('404 request');
 		// Send a 404 page if the server was not found
-		const page = fs.readFileSync(require.resolve('../error.html'), 'utf8');
-		res.statusCode = 404;
-		res.setHeader('Content-Type', 'text/html');
-		res.end(page
-			.replace('{StatusCode}', '404')
-			.replace('{ErrorText}', 'The requested development server was not found')
-		);
+		sendErrorPage(res, 'The requested development server was not found', 404);
 	} else {
 		console.error('ERROR', error);
 		// Send a 500 page otherwise
-		const page = fs.readFileSync(require.resolve('../error.html'), 'utf8');
-		res.statusCode = 500;
-		res.setHeader('Content-Type', 'text/html');
-		// Sends the error message to the user
-		res.end(page
-			.replace('{StatusCode}', '500')
-			.replace('{ErrorText}', error.toString())
-		);
+		sendErrorPage(res, error.toString(), 500);
 	}
 });
 
