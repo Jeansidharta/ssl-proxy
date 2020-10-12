@@ -4,24 +4,35 @@ import fs from 'fs';
 import https from 'https';
 
 import proxy from './proxy';
+import process from 'process';
+import { findConfigForHostname } from './user-configuration';
+import { sendErrorPage } from './lib/send-error-page';
 
 /** Given a `domain`, verifies if there is a certificate somewhere, and serve it */
 function createSecureContextFromLocalCertificate (domain: string) {
-	let keyPath: string, certPath: string, caPath: string;
-	try {
-		keyPath = require.resolve(`../certificates/${domain}/private.key`);
-		certPath = require.resolve(`../certificates/${domain}/certificate.crt`);
-		caPath = require.resolve(`../certificates/${domain}/ca_bundle.crt`);
-	} catch (e) {
-		console.error(`No certificate for domain '${domain}'`);
+	const config = findConfigForHostname(domain);
+
+	if (!config) {
+		console.error(`Could not find config entry for domain '${domain}'`);
 		return null;
 	}
 
+	if (!config.allowHTTPS) {
+		console.error(`Server does not allow https`);
+		return null;
+	}
+
+	const {
+		sslCertificateAuthorityBundle,
+		sslCertificateLocation,
+		sslCertificatePrivateKeyLocation,
+	} = config;
+
 	try {
 		return tls.createSecureContext({
-			key: fs.readFileSync(keyPath, 'utf8'),
-			cert: fs.readFileSync(certPath, 'utf8'),
-			ca: fs.readFileSync(caPath, 'utf8'),
+			key: fs.readFileSync(sslCertificatePrivateKeyLocation!, 'utf8'),
+			cert: fs.readFileSync(sslCertificateLocation!, 'utf8'),
+			ca: fs.readFileSync(sslCertificateAuthorityBundle!, 'utf8'),
 		});
 	} catch (e) {
 		console.error(`Falied to create secure context for domain '${domain}'. Maybe the certs and keys are currupted?`);
@@ -57,8 +68,26 @@ const httpsServer = https.createServer({
 	* to the development server
 	*/
 	(req, res) => {
-		proxy.web(req, res);
+		const hostname = req.headers.host || req.headers.origin;
+
+		if (!hostname) return sendErrorPage(res, `Your request must have a 'host' header'`, 400);
+
+		const config = findConfigForHostname(hostname);
+
+		if (!config) throw new Error(`Previously located config was not found for hostname '${hostname}'`);
+
+		const target = `http://localhost:${config.inboundPort.toString()}`;
+		proxy.web(req, res, {
+			target,
+		});
 	}
 );
+
+httpsServer.on('error', (error: any) => {
+	if (error.code === 'EACCES') {
+		console.error('Not enough permission to listen on port 443. Try running with sudo');
+		process.exit(-1);
+	} else throw error;
+});
 
 export default httpsServer;
