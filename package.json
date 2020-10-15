@@ -2,14 +2,14 @@
   "name": "ssl-proxy",
   "version": "1.0.0",
   "description": "ssl-proxy",
-  "main": "out/index.js",
+  "main": "out/src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "ts-node-dev src/index.ts",
     "build": "tsc",
-    "start": "node out/index.js",
+    "start": "node out/src/index.js",
     "build-start": "npm run build && npm run start",
-    "pm2-build-start": "npm run build && pm2 start ecosystem.config.js"
+    "pm2-start": "npm run build && pm2 start ecosystem.config.js"
   },
   "author": "",
   "license": "ISC",
@@ -18,7 +18,11 @@
     "@types/node": "^14.0.27",
     "@types/pem": "^1.9.5",
     "http-proxy": "^1.18.1",
+    "node-fetch": "^2.6.1",
     "ts-node-dev": "^1.0.0-pre.56",
     "typescript": "^3.9.7"
+  },
+  "devDependencies": {
+    "@types/node-fetch": "^2.5.7"
   }
 }

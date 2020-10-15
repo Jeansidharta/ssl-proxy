@@ -1,3 +1,4 @@
 certificates/
 node_modules/
 out/
+netlify_key.json

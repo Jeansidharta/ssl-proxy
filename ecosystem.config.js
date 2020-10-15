@@ -4,7 +4,7 @@
 module.exports = {
 	apps: [{
 		name: 'ssl-proxy',
-		script: 'out/index.js',
+		script: 'out/src/index.js',
 		watch: false,
 		cwd: require.main.id,
 		time: true,

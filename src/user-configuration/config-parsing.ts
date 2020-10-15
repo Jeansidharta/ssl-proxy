@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { ServerConfig, applyDefaultConfiguration } from './config-validation';
+import { ServerConfig } from '../models/user-configuration';
 
 const CONFIG_FOLDER_NAME = '.web-servers';
 
@@ -65,14 +65,14 @@ async function readConfigFiles (filePaths: string[]): Promise<ServerConfig[]> {
 				return;
 			}
 
-			files.push(applyDefaultConfiguration(fileObj));
+			files.push(fileObj);
 			return;
 		})
 	);
 	return files;
 }
 
-export async function upateConfiguration () {
+export async function loadConfiguration () {
 	const homePaths = await getAllHomeFolderPaths();
 	const configFilePaths = await getAllConfigFilePaths(homePaths);
 	const configs = await readConfigFiles(configFilePaths);
