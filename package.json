@@ -5,6 +5,7 @@
   "main": "out/src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "tsc -p . --noEmit",
     "dev": "ts-node-dev src/index.ts",
     "build": "tsc",
     "start": "node out/src/index.js",

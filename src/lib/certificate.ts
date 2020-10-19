@@ -1,6 +1,6 @@
 import { openssl } from './openssl';
 import { promises as fs } from 'fs';
-import { IssuerInformation, ServerConfig } from '../models/user-configuration';
+import { IssuerInformation, HostConfig } from '../models/user-configuration';
 
 async function writeConfigFile (
 	path: string,
@@ -79,19 +79,19 @@ async function generateCABundle (pathToBundle: string, pathToAllCAs: string[]) {
 	await fs.writeFile(pathToBundle, bundleContent.join(''));
 }
 
-export async function generateCertificateFromConfig (config: ServerConfig) {
+export async function generateCertificateFromConfig (config: HostConfig) {
 	if (!config.certificateGenerationArguments) throw new Error('Cannot generate certificate without arguments');
 
-	const keyDirectory = `${config.certificateGenerationArguments.certificateGenerationLocation}/${config.serverDomain}`;
+	const keyDirectory = `${config.certificateGenerationArguments.certificateGenerationLocation}/${config.hostDomain}`;
 	const keyPath = `${keyDirectory}/private.key`;
 	const certificatePath = `${keyDirectory}/certificate.crt`;
 	const configPath = `${keyDirectory}/config.cnf`;
 	const certSignRequestPath = `${keyDirectory}/certSignRequest.csr`;
 	const CABundlePath = `${keyDirectory}/CABundle.crt`;
 
-	console.log(`Generating certificate for ${config.serverDomain} at ${keyDirectory}...`);
+	console.log(`Generating certificate for ${config.hostDomain} at ${keyDirectory}...`);
 	await fs.mkdir(keyDirectory, { recursive: true });
-	await writeConfigFile(configPath, config.serverDomain, config.certificateGenerationArguments?.issuerInformation);
+	await writeConfigFile(configPath, config.hostDomain, config.certificateGenerationArguments?.issuerInformation);
 	await generateKey(keyPath);
 	await generateCertificateSignRequest(keyPath, configPath, certSignRequestPath);
 	await generateCertificate(

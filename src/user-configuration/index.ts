@@ -1,10 +1,11 @@
-import path from 'path';
+import fs from 'fs/promises';
 import { loadConfiguration } from "./config-parsing";
 import { updateNetlifyDNS } from "../lib/update-netlify-dns";
 import { generateCertificateFromConfig } from "../lib/certificate";
-import { ServerConfig } from "../models/user-configuration";
+import { ConfigFile } from "../models/user-configuration";
 import { validateConfiguration } from "./config-validation";
 import { applyDefaultConfiguration } from "./config-default";
+import { getPathToCertificate } from '../lib/path-resolver';
 
 async function unkillableUpdateNetlifyDNS () {
 	try {
@@ -14,41 +15,39 @@ async function unkillableUpdateNetlifyDNS () {
 	}
 }
 
-export let serverConfigs: ServerConfig[] = [];
+export let configFiles: ConfigFile[] = [];
 
-export function findConfigForHostname (hostname: string) {
-	return serverConfigs.find(config => config.serverDomain === hostname);
+export function findConfigFileForHostDomain (hostname: string) {
+	return configFiles.find(file => file.config.hostDomain === hostname);
 }
 
-export function getPathToCertificate (config: ServerConfig) {
-	if (config.autoGenerateCertificate && config.certificateGenerationArguments) {
-		const dir = path.join(
-			config.certificateGenerationArguments.certificateGenerationLocation,
-			config.serverDomain,
-		);
-
-		return {
-			certificate: path.join(dir, '/certificate.crt'),
-			key: path.join(dir, '/private.key'),
-			bundle: path.join(dir, '/CABundle.crt'),
-		};
-	} else if (config.customCertificate) {
-		return {
-			certificate: config.customCertificate.certificateLocation,
-			key: config.customCertificate.privateKeyLocation,
-			bundle: config.customCertificate.CABundle,
-		};
-	} else throw new Error('Error in configuration');
+async function doesCertificateAlreadyExists (configFile: ConfigFile) {
+	const { certificate, key } = getPathToCertificate(configFile);
+	try {
+		await Promise.all([
+			fs.stat(certificate),
+			fs.stat(key),
+		]);
+		return true;
+	} catch (e) {
+		return false;
+	}
 }
 
 (async () => {
-	serverConfigs = await loadConfiguration();
-	serverConfigs.forEach(applyDefaultConfiguration);
-	await Promise.all(serverConfigs.map(validateConfiguration));
+	configFiles = await loadConfiguration();
+	configFiles.forEach(file => applyDefaultConfiguration(file.config));
+	await Promise.all(configFiles.map(validateConfiguration));
 	unkillableUpdateNetlifyDNS();
 	setInterval(() => {
 		unkillableUpdateNetlifyDNS();
 	}, 1000 * 60 * 60);
-	const configsToGenerateCertificate = serverConfigs.filter(config => config.autoGenerateCertificate);
-	configsToGenerateCertificate.forEach(generateCertificateFromConfig);
+	const configsFilesWithCustomCert = configFiles.filter(file => file.config.autoGenerateCertificate);
+	configsFilesWithCustomCert.forEach(async file => {
+		if (await doesCertificateAlreadyExists(file)) {
+			console.log(`Certificate for '${file.config.hostDomain}' already exists. Skiping generation.`);
+		} else {
+			generateCertificateFromConfig(file.config);
+		}
+	});
 })();

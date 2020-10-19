@@ -56,11 +56,11 @@ export type CertificateGenerationArguments = {
 	issuerInformation?: IssuerInformation;
 }
 
-export type ServerConfig = {
+export type HostConfig = {
 	/** The port your application is listening on */
 	inboundPort: number,
 	/** The server domain on which your application is being hosted */
-	serverDomain: string,
+	hostDomain: string,
 	/** If `false`, will refuse any HTTP connection. Defaults to `true` */
 	allowHTTP?: boolean,
 	/** If `false`, will refuse any HTTPS connection. Defaults to `false` */
@@ -104,3 +104,11 @@ export type ServerConfig = {
 		CABundle?: string,
 	}
 };
+
+export type ConfigFile = {
+	homePath: string,
+	config: HostConfig,
+	configDirectoryPath: string,
+	configPath: string,
+	configFileName: string,
+}

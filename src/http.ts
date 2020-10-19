@@ -3,7 +3,7 @@ import http from 'http';
 import proxy from './proxy';
 import process from 'process';
 
-import { findConfigForHostname } from './user-configuration';
+import { findConfigFileForHostDomain } from './user-configuration';
 import { sendErrorPage } from './lib/send-error-page';
 
 let httpServer: http.Server;
@@ -18,21 +18,21 @@ httpServer = http.createServer((req, res) => {
 
 	if (!hostname) return sendErrorPage(res, `Your request must have a 'host' header'`, 400);
 
-	const config = findConfigForHostname(hostname);
+	const configFile = findConfigFileForHostDomain(hostname);
 
-	if (!config) return sendErrorPage(res, `No page found with hostname '${hostname}'`, 404);
+	if (!configFile) return sendErrorPage(res, `No page found with hostname '${hostname}'`, 404);
 
-	if (!config.allowHTTP && config.allowHTTPS) {
+	if (!configFile.config.allowHTTP && configFile.config.allowHTTPS) {
 		// Redirects to HTTPS
 		res.statusCode = 301;
-		res.setHeader('Location', `https://${config.serverDomain}`);
+		res.setHeader('Location', `https://${configFile.config.hostDomain}`);
 		res.end();
 		return;
-	} else if (!config.allowHTTP) {
+	} else if (!configFile.config.allowHTTP) {
 		return sendErrorPage(res, `HTTP is disabled in this hostname, and no HTTPS redirect was found`, 400);
 	}
 
-	const target = `http://localhost:${config.inboundPort.toString()}`;
+	const target = `http://localhost:${configFile.config.inboundPort.toString()}`;
 	console.log(target);
 	proxy.web(req, res, {
 		target,

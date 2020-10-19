@@ -1,17 +1,18 @@
 import { promises as fs } from 'fs';
-import { ServerConfig } from '../models/user-configuration';
+import { resolveRelativePath } from '../lib/path-resolver';
+import { ConfigFile, HostConfig } from '../models/user-configuration';
 
 const error = (message: string) => { throw new Error(message); }
 
 /**
  * Makes sure all options have the correct type
  */
-function validateTypes (configObject: ServerConfig) {
+function validateTypes (configObject: HostConfig) {
 	const isType = (type: string, optionName: string, optionValue: any) => {
 		if (optionValue !== undefined && typeof optionValue !== type) error(`Option '${optionName}' must be a ${type}`);
 	};
 
-	isType('string', 'serverDomain', configObject.serverDomain);
+	isType('string', 'hostDomain', configObject.hostDomain);
 	isType('number', 'inboundPort', configObject.inboundPort);
 	isType('boolean', 'allowHTTP', configObject.allowHTTP);
 	isType('boolean', 'allowHTTPS', configObject.allowHTTPS);
@@ -61,13 +62,13 @@ function validateTypes (configObject: ServerConfig) {
 /**
  * Makes sure all required options are provided
  */
-function validateRequirements (configObject: ServerConfig) {
+function validateRequirements (configObject: HostConfig) {
 	const required = (optionName: string, optionValue: any) => {
 		if (optionValue === undefined) error(`option '${optionName}' is required`);
 	};
 
 	required('inboundPort', configObject.inboundPort);
-	required('serverDomain', configObject.serverDomain);
+	required('hostDomain', configObject.hostDomain);
 	if (configObject.allowHTTPS) {
 		if (configObject.autoGenerateCertificate) {
 			if (!configObject.certificateGenerationArguments)
@@ -97,7 +98,7 @@ function validateRequirements (configObject: ServerConfig) {
  * if (allowHTTP === false && allowHTTPS === false) 
  * 	throw new Error(`Both options 'allowHTTP' and 'allowHTTPS' cannot be false`);
  */
-function validateLogic (configObject: ServerConfig) {
+function validateLogic (configObject: HostConfig) {
 	if (configObject.inboundPort < 1024 || configObject.inboundPort > 65_535)
 		error(`'inboundPort' can only be above 1023 and below 65536`);
 
@@ -121,39 +122,40 @@ function validateLogic (configObject: ServerConfig) {
 /**
  * Makes sure all files specified at all options exist.
  */
-async function verifyFilesExist (configObject: ServerConfig) {
+async function verifyFilesExist (configFile: ConfigFile) {
 	const promises: Promise<any>[] = [];
 
 	async function fileExist (optionName: string, path: string) {
-		const promise = fs.stat(path).catch(() => error(`File specified at '${optionName}' could not be accessed`));
+		const resolvedPath = resolveRelativePath(path, configFile.configDirectoryPath, configFile.homePath);
+		const promise = fs.stat(resolvedPath).catch(() => error(`File specified at '${optionName}' could not be accessed`));
 		promises.push(promise);
 	}
 
-	if (configObject.customCertificate) {
-		fileExist('customCertificate.certificateLocation', configObject.customCertificate.certificateLocation);
-		fileExist('customCertificate.privateKeyLocation', configObject.customCertificate.privateKeyLocation);
-		if (configObject.customCertificate.CABundle) {
-			fileExist('customCertificate.CABundle', configObject.customCertificate.CABundle);
+	if (configFile.config.customCertificate) {
+		fileExist('customCertificate.certificateLocation', configFile.config.customCertificate.certificateLocation);
+		fileExist('customCertificate.privateKeyLocation', configFile.config.customCertificate.privateKeyLocation);
+		if (configFile.config.customCertificate.CABundle) {
+			fileExist('customCertificate.CABundle', configFile.config.customCertificate.CABundle);
 		}
 	}
-	if (configObject.certificateGenerationArguments) {
-		fileExist('certificateGenerationArguments.certificateGenerationLocation', configObject.certificateGenerationArguments.certificateGenerationLocation);
-		fileExist('certificateGenerationArguments.certificateAuthority.certificateLocation', configObject.certificateGenerationArguments.certificateAuthority.certificateLocation);
-		fileExist('certificateGenerationArguments.certificateAuthority.keyLocation', configObject.certificateGenerationArguments.certificateAuthority.keyLocation);
-		fileExist('certificateGenerationArguments.certificateAuthority.serialLocation', configObject.certificateGenerationArguments.certificateAuthority.serialLocation);
+	if (configFile.config.certificateGenerationArguments) {
+		fileExist('certificateGenerationArguments.certificateGenerationLocation', configFile.config.certificateGenerationArguments.certificateGenerationLocation);
+		fileExist('certificateGenerationArguments.certificateAuthority.certificateLocation', configFile.config.certificateGenerationArguments.certificateAuthority.certificateLocation);
+		fileExist('certificateGenerationArguments.certificateAuthority.keyLocation', configFile.config.certificateGenerationArguments.certificateAuthority.keyLocation);
+		fileExist('certificateGenerationArguments.certificateAuthority.serialLocation', configFile.config.certificateGenerationArguments.certificateAuthority.serialLocation);
 	}
 
 	await Promise.all(promises);
 }
 
-export async function validateConfiguration (configObject: ServerConfig) {
+export async function validateConfiguration (configFiles: ConfigFile) {
 	try {
-		validateTypes(configObject);
-		validateRequirements(configObject);
-		validateLogic(configObject);
-		await verifyFilesExist(configObject);
+		validateTypes(configFiles.config);
+		validateRequirements(configFiles.config);
+		validateLogic(configFiles.config);
+		await verifyFilesExist(configFiles);
 	} catch (e) {
-		console.error(`Error validating certificate from ${configObject.serverDomain}: ${e.message}`);
+		console.error(`Error validating ${configFiles.configPath}: ${e.message}`);
 		throw null;
 	}
 }

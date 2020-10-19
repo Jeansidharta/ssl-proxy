@@ -1,14 +1,14 @@
 import { getMyIP } from './ip';
-import { serverConfigs } from '../user-configuration';
+import { configFiles } from '../user-configuration';
 import { listDNS } from '../netlify/list-dns';
 import { createDNS } from '../netlify/create-dns';
 import { deleteDNS } from '../netlify/delete-dns';
 
 export async function updateNetlifyDNS () {
 	const dnsToSynchronize: { [p: string]: boolean } = {};
-	serverConfigs.forEach(config => {
-		if (!config.synchronizeNetlifyDNS) return;
-		dnsToSynchronize[config.serverDomain] = true;
+	configFiles.forEach(file => {
+		if (!file.config.synchronizeNetlifyDNS) return;
+		dnsToSynchronize[file.config.hostDomain] = true;
 	});
 
 	if (Object.entries(dnsToSynchronize).length === 0) {

@@ -1,6 +1,6 @@
-import { ServerConfig } from "../models/user-configuration";
+import { HostConfig } from "../models/user-configuration";
 
-export function applyDefaultConfiguration (config: ServerConfig) {
+export function applyDefaultConfiguration (config: HostConfig) {
 	if (config.certificateGenerationArguments) {
 		config.certificateGenerationArguments.days = 180;
 	}

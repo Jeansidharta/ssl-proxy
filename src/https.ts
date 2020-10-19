@@ -5,24 +5,25 @@ import https from 'https';
 
 import proxy from './proxy';
 import process from 'process';
-import { findConfigForHostname, getPathToCertificate } from './user-configuration';
+import { findConfigFileForHostDomain } from './user-configuration';
 import { sendErrorPage } from './lib/send-error-page';
+import { getPathToCertificate } from './lib/path-resolver';
 
 /** Given a `domain`, verifies if there is a certificate somewhere, and serve it */
 async function createSecureContextFromLocalCertificate (domain: string) {
-	const config = findConfigForHostname(domain);
+	const configFile = findConfigFileForHostDomain(domain);
 
-	if (!config) {
+	if (!configFile) {
 		console.error(`Could not find config entry for domain '${domain}'`);
 		return null;
 	}
 
-	if (!config.allowHTTPS) {
+	if (!configFile.config.allowHTTPS) {
 		console.error(`Server does not allow https`);
 		return null;
 	}
 
-	const certDir = getPathToCertificate(config);
+	const certDir = getPathToCertificate(configFile);
 
 	const [ca, cert, key] = await Promise.all([
 		fs.readFile(certDir.bundle!, 'utf8').catch(() => undefined),
@@ -73,13 +74,13 @@ const httpsServer = https.createServer({
 
 		if (!hostname) return sendErrorPage(res, `Your request must have a 'host' header'`, 400);
 
-		const config = findConfigForHostname(hostname);
+		const configFile = findConfigFileForHostDomain(hostname);
 
-		if (!config) throw new Error(`Previously located config was not found for hostname '${hostname}'`);
+		if (!configFile) throw new Error(`Previously located config was not found for hostname '${hostname}'`);
 
 		req.headers.host = "127.0.0.1";
 
-		const target = `http://localhost:${config.inboundPort.toString()}`;
+		const target = `http://localhost:${configFile.config.inboundPort.toString()}`;
 		proxy.web(req, res, {
 			target,
 		});
