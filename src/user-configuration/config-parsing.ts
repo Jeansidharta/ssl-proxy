@@ -54,6 +54,18 @@ async function getConfigPathFromHome (homePath: string): Promise<Error | string[
 	return jsonFileEntries.map(({ name }) => path.join(configFolderPath, name));
 }
 
+async function getFileOwnerAndGroup (filePath: string) {
+	try {
+		const stat = await fs.stat(filePath);
+		return {
+			owner: stat.uid,
+			group: stat.gid,
+		}
+	} catch (e) {
+		return new Error(`Failed to apply 'stat' on ${filePath}`);
+	}
+}
+
 export async function loadConfiguration () {
 	const homePaths = await getAllHomeFolderPaths();
 	const configs = await Promise.all(homePaths.map(async homePath => {
@@ -66,10 +78,18 @@ export async function loadConfiguration () {
 
 		// Reads configurations
 		const configFiles = await Promise.all(configPaths.map(async configPath => {
-			const configContents = await readConfigFile(configPath);
+			const [configContents, configAccess] = await Promise.all([
+				readConfigFile(configPath),
+				getFileOwnerAndGroup(configPath),
+			]);
 
 			if (configContents instanceof Error) {
 				console.log(configContents.message);
+				return;
+			}
+
+			if (configAccess instanceof Error) {
+				console.log(configAccess.message);
 				return;
 			}
 
@@ -77,6 +97,8 @@ export async function loadConfiguration () {
 				config: configContents,
 				homePath,
 				configPath,
+				configOwner: configAccess.owner,
+				configGroup: configAccess.group,
 				configDirectoryPath: path.parse(configPath).dir,
 				configFileName: path.basename(configPath),
 			};

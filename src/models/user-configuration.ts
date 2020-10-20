@@ -107,6 +107,8 @@ export type HostConfig = {
 
 export type ConfigFile = {
 	homePath: string,
+	configOwner: number,
+	configGroup: number,
 	config: HostConfig,
 	configDirectoryPath: string,
 	configPath: string,

@@ -36,7 +36,7 @@ async function doesCertificateAlreadyExists (configFile: ConfigFile) {
 
 (async () => {
 	configFiles = await loadConfiguration();
-	configFiles.forEach(file => applyDefaultConfiguration(file.config));
+	configFiles.forEach(file => applyDefaultConfiguration(file));
 	await Promise.all(configFiles.map(validateConfiguration));
 	unkillableUpdateNetlifyDNS();
 	setInterval(() => {
@@ -47,7 +47,7 @@ async function doesCertificateAlreadyExists (configFile: ConfigFile) {
 		if (await doesCertificateAlreadyExists(file)) {
 			console.log(`Certificate for '${file.config.hostDomain}' already exists. Skiping generation.`);
 		} else {
-			generateCertificateFromConfig(file.config);
+			generateCertificateFromConfig(file);
 		}
 	});
 })();
